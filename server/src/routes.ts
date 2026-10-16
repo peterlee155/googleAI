@@ -32,7 +32,10 @@ function wrap(handler: AsyncHandler) {
     handler(req, res).catch((error: unknown) => {
       const message = error instanceof Error ? error.message : 'Unexpected error';
       console.error('[api]', message);
-      if (!res.headersSent) res.status(500).json({ error: message });
+      if (!res.headersSent) {
+        // Upstream bodies can echo the key or internal detail back to the client.
+        res.status(502).json({ error: 'Upstream request failed. See the server log.' });
+      }
     });
   };
 }
@@ -166,7 +169,7 @@ router.post(
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Generation failed';
       console.error('[query]', message);
-      send('error', { error: message });
+      if (!aborted) send('error', { error: 'The model call failed. See the server log.' });
     }
 
     send('done', { ok: !aborted });
